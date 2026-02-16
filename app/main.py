@@ -77,19 +77,20 @@ def classify_message(message):
 def send_notification(inquiry_data):
     if inquiry_data['priority'] == 'High' or inquiry_data['category'] == 'Sales':
         try:
+            email_body = (
+                f"New urgent inquiry!\n\n"
+                f"Name: {inquiry_data['name']}\n"
+                f"Email: {inquiry_data['email']}\n"
+                f"Message: {inquiry_data['message']}\n"
+                f"Priority: {inquiry_data['priority']}"
+            )
             ses.send_email(
                 Source=os.getenv('SES_SENDER_EMAIL'),
                 Destination={'ToAddresses': [os.getenv('SES_RECEIVER_EMAIL')]},
                 Message={
                     'Subject': {'Data': f"URGENT: {inquiry_data['category']} Inquiry from {inquiry_data['name']}"},
                     'Body': {
-                        'Text': {'Data': f"New urgent inquiry!
-
-Name: {inquiry_data['name']}
-Email: {inquiry_data['email']}
-Message: {inquiry_data['message']}
-
-Priority: {inquiry_data['priority']}"}
+                        'Text': {'Data': email_body}
                     }
                 }
             )
@@ -140,4 +141,4 @@ def handle_inquiry():
     })
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=80)
