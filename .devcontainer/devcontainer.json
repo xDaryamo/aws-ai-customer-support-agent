@@ -1,0 +1,13 @@
+{
+  "name": "AWS AI Customer Support Agent",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "containerEnv": {
+    "TERM": "xterm-256color"
+  },
+  "postCreateCommand": "bash .devcontainer/scripts/setup.sh",
+  "remoteUser": "vscode",
+  "workspaceFolder": "/workspaces/aws-ai-customer-support-agent"
+}

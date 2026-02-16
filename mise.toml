@@ -1,0 +1,5 @@
+[tools]
+python = "3.11"
+terraform = "latest"
+awscli = "latest"
+node = "latest"
