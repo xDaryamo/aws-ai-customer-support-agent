@@ -26,8 +26,7 @@ The core logic resides in a robust backend that orchestrates multiple AWS servic
 ### Case Study 1: High-Priority Support Request
 When a user reports a critical issue (e.g., a security breach), the AI recognizes the urgency and triggers the full notification pipeline.
 
-<details>
-<summary><b>View Implementation Steps</b></summary>
+
 
 *   **1. User Submission:** The user sends an urgent message via the web interface.
     ![Web UI High Priority](docs/web-ui-high-priority.png)
@@ -38,13 +37,12 @@ When a user reports a critical issue (e.g., a security breach), the AI recognize
     ```
 *   **3. Real-Time Alerting:** An instant notification is dispatched via Amazon SES.
     ![SES Email Alert](docs/ses-email-alert.png)
-</details>
+
+--- 
 
 ### Case Study 2: Low-Priority Feedback
 General feedback is classified as "General/Low," ensuring it is logged without disturbing the team.
 
-<details>
-<summary><b>View Implementation Steps</b></summary>
 
 *   **1. User Submission:** Positive feedback is submitted.
 
@@ -54,7 +52,7 @@ General feedback is classified as "General/Low," ensuring it is logged without d
     [ec2-user@ip-10-0-0-20 app]$ python3 -c "import os; from main import Inquiry..."
     Name: Alice Henderson | Category: General | Priority: Low
     ```
-</details>
+
 
 ## Production Verification
 The system is built with production-grade standards:

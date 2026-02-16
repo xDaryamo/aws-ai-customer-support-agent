@@ -1,6 +1,0 @@
-Flask
-boto3
-PyMySQL
-SQLAlchemy
-python-dotenv
-flask-cors
