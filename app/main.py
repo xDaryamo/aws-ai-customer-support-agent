@@ -37,108 +37,77 @@ class Inquiry(Base):
 
 Base.metadata.create_all(bind=engine)
 
+# AWS Regions from Environment Variables
+BEDROCK_REGION = os.getenv('BEDROCK_REGION', 'us-east-1')
+SES_REGION = os.getenv('SES_REGION', 'eu-south-1')
 
-bedrock = boto3.client(service_name='bedrock-runtime', region_name='eu-central-1')
-ses = boto3.client(service_name='ses', region_name='eu-south-1')
+# AWS Clients
+bedrock = boto3.client(service_name='bedrock-runtime', region_name=BEDROCK_REGION)
+ses = boto3.client(service_name='ses', region_name=SES_REGION)
 
 def classify_message(message):
-    prompt = f"""
-    Human: Classify the following customer message into one of these categories: Sales, Support, General. 
-    Also assign a priority: High, Medium, Low.
-    Return only a JSON object with keys 'category' and 'priority'.
-    
-    Message: {message}
-    
-    Assistant:"""
+    prompt = f"Classify this message: {message}. Return ONLY JSON with keys 'category' (Sales, Support, General) and 'priority' (High, Medium, Low)."
     
     body = json.dumps({
-        "anthropic_version": "bedrock-2023-05-31",
-        "max_tokens": 100,
         "messages": [
             {
                 "role": "user",
-                "content": prompt
+                "content": [{"text": prompt}]
             }
-        ]
+        ],
+        "inferenceConfig": {
+            "max_new_tokens": 100,
+            "temperature": 0.1
+        }
     })
     
     try:
+        # Using Cross-Region Inference Profile for Nova Micro
         response = bedrock.invoke_model(
-            modelId='anthropic.claude-3-haiku-20240307-v1:0',
+            modelId='us.amazon.nova-micro-v1:0', 
             body=body
         )
-        response_body = json.loads(response.get('body').read())
-        content = response_body['content'][0]['text']
+        res = json.loads(response.get('body').read())
+        content = res['output']['message']['content'][0]['text'].strip()
+        
+        if '{' in content:
+            content = content[content.find('{'):content.rfind('}')+1]
         return json.loads(content)
     except Exception as e:
-        print(f"Error calling Bedrock: {e}")
+        print(f"Bedrock Error: {e}")
         return {"category": "General", "priority": "Medium"}
 
-def send_notification(inquiry_data):
-    if inquiry_data['priority'] == 'High' or inquiry_data['category'] == 'Sales':
+def send_notification(data):
+    if data['priority'] == 'High' or data['category'] == 'Sales':
         try:
-            email_body = (
-                f"New urgent inquiry!\n\n"
-                f"Name: {inquiry_data['name']}\n"
-                f"Email: {inquiry_data['email']}\n"
-                f"Message: {inquiry_data['message']}\n"
-                f"Priority: {inquiry_data['priority']}"
-            )
+            body_text = f"Urgent Inquiry!\n\nName: {data['name']}\nMessage: {data['message']}\nCategory: {data['category']}\nPriority: {data['priority']}"
             ses.send_email(
                 Source=os.getenv('SES_SENDER_EMAIL'),
                 Destination={'ToAddresses': [os.getenv('SES_RECEIVER_EMAIL')]},
                 Message={
-                    'Subject': {'Data': f"URGENT: {inquiry_data['category']} Inquiry from {inquiry_data['name']}"},
-                    'Body': {
-                        'Text': {'Data': email_body}
-                    }
+                    'Subject': {'Data': f"URGENT: {data['category']} Inquiry"},
+                    'Body': {'Text': {'Data': body_text}}
                 }
             )
+            print("Email notification sent successfully!")
         except Exception as e:
-            print(f"Error sending SES email: {e}")
+            print(f"SES Error: {e}")
 
 @app.route('/')
 def index():
     return render_template('index.html')
 
 @app.route('/api/inquiry', methods=['POST'])
-def handle_inquiry():
-    data = request.json
-    name = data.get('name')
-    email = data.get('email')
-    message = data.get('message')
-    
-    # 1. AI Classification
-    classification = classify_message(message)
-    
-    # 2. Save to Database
+def handle():
+    d = request.json
+    c = classify_message(d['message'])
     db = SessionLocal()
-    new_inquiry = Inquiry(
-        name=name,
-        email=email,
-        message=message,
-        category=classification['category'],
-        priority=classification['priority']
-    )
-    db.add(new_inquiry)
+    n = Inquiry(name=d['name'], email=d['email'], message=d['message'], category=c['category'], priority=c['priority'])
+    db.add(n)
     db.commit()
-    db.refresh(new_inquiry)
     db.close()
-    
-    # 3. Send Notification if urgent
-    send_notification({
-        "name": name,
-        "email": email,
-        "message": message,
-        "category": classification['category'],
-        "priority": classification['priority']
-    })
-    
-    return jsonify({
-        "status": "success",
-        "category": classification['category'],
-        "priority": classification['priority']
-    })
+    send_notification({"name": d['name'], "message": d['message'], "category": c['category'], "priority": c['priority']})
+    return jsonify(c)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=80)
