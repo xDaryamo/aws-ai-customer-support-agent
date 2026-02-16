@@ -37,9 +37,9 @@ class Inquiry(Base):
 
 Base.metadata.create_all(bind=engine)
 
-# AWS Clients
-bedrock = boto3.client(service_name='bedrock-runtime', region_name='us-east-1')
-ses = boto3.client(service_name='ses', region_name='us-east-1')
+
+bedrock = boto3.client(service_name='bedrock-runtime', region_name='eu-central-1')
+ses = boto3.client(service_name='ses', region_name='eu-south-1')
 
 def classify_message(message):
     prompt = f"""
@@ -64,7 +64,7 @@ def classify_message(message):
     
     try:
         response = bedrock.invoke_model(
-            modelId='anthropic.claude-haiku-4-5-20251001-v1:0',
+            modelId='anthropic.claude-3-haiku-20240307-v1:0',
             body=body
         )
         response_body = json.loads(response.get('body').read())
